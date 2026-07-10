@@ -15,6 +15,12 @@ function Invoke-PkgSyncPlan {
     foreach ($item in $Plan.ToCreate) {
         $extension = [System.IO.Path]::GetExtension($item.Target)
         $linkPath = Join-Path $TargetDirectory ($item.Name + $extension)
+
+        if (Test-Path -LiteralPath $linkPath) {
+            Write-Warning "Skipped '$($item.Name)' from $($item.Source): a file already exists at '$linkPath' that pkgsync did not create"
+            continue
+        }
+
         New-Item -ItemType SymbolicLink -Path $linkPath -Target $item.Target -ErrorAction Stop | Out-Null
     }
 }
