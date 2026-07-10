@@ -7,7 +7,19 @@ Import-Module (Join-Path $PSScriptRoot 'src\PkgSync.psm1') -Force
 try {
     $result = Invoke-PkgSync
 } catch {
-    $isPrivilegeError = $_.Exception.Message -match 'privilege|access is denied'
+    $isPrivilegeError = $false
+    $ex = $_.Exception
+    while ($ex) {
+        if ($ex.HResult -eq 0x80070522 -or $ex.HResult -eq 0x80070005) {
+            $isPrivilegeError = $true
+            break
+        }
+        $ex = $ex.InnerException
+    }
+    if (-not $isPrivilegeError) {
+        $isPrivilegeError = $_.Exception.Message -match 'privilege|access is denied'
+    }
+
     if ($isPrivilegeError -and -not (Test-PkgSyncIsElevated)) {
         Write-Host 'Elevation required to create symlinks. Requesting admin rights...'
         Start-Process -FilePath (Get-Process -Id $PID).Path -Verb RunAs -ArgumentList @(
