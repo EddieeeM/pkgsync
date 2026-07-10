@@ -6,12 +6,12 @@ function Get-PkgSyncSourceExecutables {
 
     if (-not (Test-Path -LiteralPath $Path)) { return @() }
 
-    $extensions = @('.exe', '.cmd', '.bat', '.ps1')
-    $results = @()
+    $extensionPriority = @{ '.exe' = 0; '.cmd' = 1; '.bat' = 2; '.ps1' = 3; '' = 4 }
+    $candidates = @()
 
     Get-ChildItem -LiteralPath $Path -File -ErrorAction SilentlyContinue | ForEach-Object {
         $ext = $_.Extension.ToLowerInvariant()
-        $isMatch = $extensions -contains $ext
+        $isMatch = $extensionPriority.ContainsKey($ext) -and $ext -ne ''
 
         if (-not $isMatch -and [string]::IsNullOrEmpty($ext)) {
             $firstLine = Get-Content -LiteralPath $_.FullName -TotalCount 1 -ErrorAction SilentlyContinue
@@ -19,11 +19,22 @@ function Get-PkgSyncSourceExecutables {
         }
 
         if ($isMatch) {
-            $results += [pscustomobject]@{
-                Name   = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
-                Target = $_.FullName
-                Source = $SourceName
+            $candidates += [pscustomobject]@{
+                Name      = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
+                Target    = $_.FullName
+                Source    = $SourceName
+                Extension = $ext
             }
+        }
+    }
+
+    $results = @()
+    $candidates | Group-Object -Property { $_.Name.ToLowerInvariant() } | ForEach-Object {
+        $winner = $_.Group | Sort-Object { $extensionPriority[$_.Extension] } | Select-Object -First 1
+        $results += [pscustomobject]@{
+            Name   = $winner.Name
+            Target = $winner.Target
+            Source = $winner.Source
         }
     }
 
@@ -42,7 +53,7 @@ function Get-PkgSyncExistingLinks {
         ForEach-Object {
             [pscustomobject]@{
                 Name     = [System.IO.Path]::GetFileNameWithoutExtension($_.Name)
-                Target   = $_.Target[0]
+                Target   = @($_.Target)[0]
                 LinkPath = $_.FullName
             }
         }

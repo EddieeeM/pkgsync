@@ -33,4 +33,30 @@ Describe 'Get-PkgSyncSourceExecutables' {
         $result.Count | Should -Be 1
         $result[0].Name | Should -Be 'shebanged'
     }
+
+    It 'dedupes multiple shims for the same tool, preferring .cmd over .ps1 and extensionless' {
+        $dir = Join-Path $TestDrive 'npmstyle'
+        New-Item -ItemType Directory -Path $dir | Out-Null
+        Set-Content -Path (Join-Path $dir 'foo') -Value "#!/bin/sh`necho hi"
+        Set-Content -Path (Join-Path $dir 'foo.cmd') -Value 'stub'
+        Set-Content -Path (Join-Path $dir 'foo.ps1') -Value 'stub'
+
+        $result = @(Get-PkgSyncSourceExecutables -Path $dir -SourceName 'npm')
+
+        $result.Count | Should -Be 1
+        $result[0].Name | Should -Be 'foo'
+        $result[0].Target | Should -Be (Join-Path $dir 'foo.cmd')
+    }
+
+    It 'dedupes case-insensitively, preferring .exe over .cmd' {
+        $dir = Join-Path $TestDrive 'mixedcase'
+        New-Item -ItemType Directory -Path $dir | Out-Null
+        Set-Content -Path (Join-Path $dir 'Foo.exe') -Value 'stub'
+        Set-Content -Path (Join-Path $dir 'foo.cmd') -Value 'stub'
+
+        $result = @(Get-PkgSyncSourceExecutables -Path $dir -SourceName 'cargo')
+
+        $result.Count | Should -Be 1
+        $result[0].Target | Should -Be (Join-Path $dir 'Foo.exe')
+    }
 }
