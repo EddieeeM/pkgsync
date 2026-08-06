@@ -50,8 +50,7 @@ Windows limitation of environment variable propagation, not a bug).
 Every run re-scans all installed package managers' default binary locations
 from scratch and reconciles that against what's currently symlinked in
 `%USERPROFILE%\bin`. There's no background service and no state file — it's
-just a script you run after installing something. See
-`docs/superpowers/specs/2026-07-07-pkgsync-design.md` for the full design.
+just a script you run after installing something.
 
 ## Conflict resolution
 
